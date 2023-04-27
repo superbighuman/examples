@@ -1,0 +1,212 @@
+import os
+import sys
+
+if sys.platform=="win32":
+    os.system("chcp 65001")
+class figure():
+
+    def __init__(self):
+        self.king="king"
+        self.queen="queen"
+        self.bishop="bishop"
+        self.knight="knight"
+        self.rook="rook"
+        self.pawns="pawns"
+        self.pictures={
+            self.king:("♔", "♚"),
+            self.queen:("♕", "♛"),   # 0 - белая фигура
+            self.bishop:("♗", "♝"),  # 1 - черная фигура
+            self.knight:("♘", "♞"),
+            self.rook:("♖", "♜"),
+            self.pawns:("♙", "♟")
+        }
+        self.pictures_invert=dict(zip(self.pictures.values(),self.pictures.keys()))
+class picture_field():
+    # def __init__(self):
+    chess_field=[[0]*8 for i in range(8)]
+    # пешки
+    for i in range(8):
+        chess_field[1][i] = figure().pictures["pawns"][1]
+        chess_field[6][i] = figure().pictures["pawns"][0]
+    # ладьи
+    chess_field[0][0],chess_field[0][7]=figure().pictures["rook"][1],figure().pictures["rook"][1]
+    chess_field[7][0], chess_field[7][7] = figure().pictures["rook"][0],figure().pictures["rook"][0]
+    # кони
+    chess_field[0][1], chess_field[0][6] = figure().pictures["knight"][1],figure().pictures["knight"][1]
+    chess_field[7][1],chess_field[7][6] = figure().pictures["knight"][0],figure().pictures["knight"][0]
+    # слоны
+    chess_field[0][2], chess_field[0][5] = figure().pictures["bishop"][1],figure().pictures["bishop"][1]
+    chess_field[7][2],chess_field[7][5] = figure().pictures["bishop"][0],figure().pictures["bishop"][0]
+    # ферзи
+    chess_field[0][3],chess_field[7][3] = figure().pictures["queen"][1],figure().pictures["queen"][0]
+    # короли
+    chess_field[0][4], chess_field[7][4] = figure().pictures["king"][1],figure().pictures["king"][0]
+    # пустые клетки
+    for i in range(8):
+        for j in range(8):
+            if not chess_field[i][j]:
+                chess_field[i][j]="."
+
+class logic_field():
+
+        logic_f = [[0] * 8 for i in range(8)]
+        for i in range(8):
+            for j in range(8):
+                for pictures in figure().pictures_invert: #заполняем ячейки по формату (ФИГУРА, КОМАНДА)
+                    if logic_f[i][j] == 0:
+                        logic_f[i][j] = ("clear", "neutral")
+                    if picture_field().chess_field[i][j] in pictures:
+
+                        if pictures.index(picture_field().chess_field[i][j])==1:
+                            logic_f[i][j]=(figure().pictures_invert[pictures],"black")
+                        else:
+                            logic_f[i][j] = (figure().pictures_invert[pictures], "white")
+# на самом деле, все три класса выше не несут никакого практического значения, все можно было сделать в одном, но первая идея была такой
+
+class game():
+
+    def __init__(self):
+        self.cell_dict={
+            "A": 1,
+            "B": 2,
+            "C": 3,
+            "D": 4,
+            "E": 5,
+            "F": 6,
+            "G": 7,
+            "H": 8
+        }
+        self.copy_field_picture=picture_field().chess_field
+
+    def request(self,turn):
+        try:
+            if turn:
+                print("Ход белых. Введите Ваш ход в формате А1 А2 (Начало Конец)")
+            else:
+                print("Ход черных. Введите Ваш ход в формате А1 А2 (Начало Конец)")
+            move=input().split()
+            move_start=move[0]
+            move_start=(self.cell_dict[move_start[0]]-1,int(move_start[1])-1)
+            move_end=move[1]
+            move_end=(self.cell_dict[move_end[0]] - 1, int(move_end[1]) - 1)
+            return move_start,move_end
+        except KeyboardInterrupt:
+            print("ENDGAME")
+            exit()
+
+        except:
+            print("НЕВЕРНЫЙ ВВОД")
+            return self.request(bool(turn==True))
+
+    def killing(self, coordinats):
+
+        team_start = logic_field.logic_f[coordinats[0][1]][coordinats[0][0]][1]
+        team_end = logic_field.logic_f[coordinats[1][1]][coordinats[1][0]][1]
+        if team_end!=team_start:
+            logic_field.logic_f[coordinats[1][1]][coordinats[1][0]] = ("clear", "neutral")
+            picture_field().chess_field[coordinats[1][1]][coordinats[1][0]] = "."
+
+    def checking_move(self, coordinats):
+
+        character = logic_field.logic_f[coordinats[0][1]][coordinats[0][0]][0]
+        team = logic_field.logic_f[coordinats[0][1]][coordinats[0][0]][1]
+        if coordinats[0]==coordinats[1]:
+            return False
+
+        try:
+            def if_pawns(coordinats,team):
+
+                if team == "white":
+                    if coordinats[0][1] == 6:
+                        return coordinats[0][0] == coordinats[1][0] and coordinats[1][1] <= coordinats[0][1]+2
+                    else:
+                        return coordinats[0][0] == coordinats[1][0] and coordinats[1][1]+1 == coordinats[0][1]
+                elif team == "black":
+                    if coordinats[0][1] == 1:
+                        return coordinats[0][0] == coordinats[1][0] and coordinats[1][1]-2 <= coordinats[0][1]
+                    else:
+                        return coordinats[0][0] == coordinats[1][0] and coordinats[1][1]-1 == coordinats[0][1]
+            def if_rook(coordinats, team):
+                return coordinats[0][0]==coordinats[1][0] or coordinats[0][1]==coordinats[1][1]
+
+            def if_knight(coordinats, team):
+                return abs(coordinats[0][0]-coordinats[1][0])==1 and abs(coordinats[0][1]-coordinats[1][1])==2 or \
+                    abs(coordinats[0][0] - coordinats[1][0]) == 2 and abs(coordinats[0][1] - coordinats[1][1]) == 1
+
+            def if_bishop(coordinats,team):
+                return abs(coordinats[0][0]-coordinats[1][0])==abs(coordinats[0][1]-coordinats[1][1])
+
+            def if_queen(coordinats, team):
+                return if_rook(coordinats,team) or if_bishop(coordinats,team)
+
+            def if_king(coordinats, team):
+                return abs(coordinats[1][1]-coordinats[0][1])<=1 and abs(coordinats[0][0]-coordinats[1][0])<=1
+            if character=="pawns":
+                return if_pawns(coordinats, team)
+
+            if character=="rook":
+                return if_rook(coordinats, team)
+
+            if character=="knight":
+                return if_knight(coordinats, team)
+
+            if character=="bishop":
+                return if_bishop(coordinats, team)
+
+            if character=="queen":
+                return if_queen(coordinats, team)
+
+            if character=="king":
+                return if_king(coordinats, team)
+
+        except IndexError:
+            return False
+
+    def checking_team(self,coordinats,turn):
+        if turn:
+            team="white"
+        else:
+            team="black"
+        if logic_field().logic_f[coordinats[0][1]][coordinats[0][0]][1]==team:
+            return True
+        else:
+            return False
+    def move(self,turn):
+        coordinats = self.request(turn)  #((0, 6), (0, 4)) (горизонталь,вертикаль) ( A, 7) (A, 3)
+        if self.checking_team(coordinats,turn) is None:
+            return None
+        elif self.checking_team(coordinats,turn):
+            if self.checking_move(coordinats):
+                self.killing(coordinats)
+                if turn == True: #True - ход белых False - ход черных
+                    flag=False
+                else:
+                    flag=True
+                picture_field().chess_field[coordinats[0][1]][coordinats[0][0]],picture_field().chess_field[coordinats[1][1]][coordinats[1][0]] = \
+                    picture_field().chess_field[coordinats[1][1]][coordinats[1][0]],picture_field().chess_field[coordinats[0][1]][coordinats[0][0]]
+                logic_field().logic_f[coordinats[0][1]][coordinats[0][0]],logic_field().logic_f[coordinats[1][1]][coordinats[1][0]] = \
+                    logic_field().logic_f[coordinats[1][1]][coordinats[1][0]],logic_field().logic_f[coordinats[0][1]][coordinats[0][0]]
+                print_figure_field(game().copy_field_picture)
+                self.move(turn=flag)
+            else:
+                print("НЕВЕРНЫЕ КООРДИНАТЫ КОНЦА ХОДА!")
+                self.move(turn)
+        else:
+            print("ВЫБРАНА ФИГУРА ДРУГОЙ КОМАНДЫ!")
+            self.move(turn)
+
+
+
+
+def print_figure_field(field):
+    print("  A B C D E F G H")
+    for i in range(8):
+        print(i+1,*field[i])
+Field=picture_field()
+Figure=figure()
+#logic_field().logic_f[coordinats[0][0]][coordinats[1][0]][1]
+print_figure_field(picture_field().chess_field)
+if __name__=="__main__":
+    game().move(True)
+
+
