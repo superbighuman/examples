@@ -1,0 +1,27 @@
+import requests
+from translate import Translator
+import json
+OPENWEATHER_URL = "http://api.openweathermap.org/geo/1.0/direct?"
+API_KEY = "bfab535543870e8771b211d245b09766"
+def weather_req(city):
+    conn = requests.get(f"http://api.openweathermap.org/geo/1.0/direct?q={city}&limit=5&appid={API_KEY}")
+    a = None
+    # print(conn.text)
+    a=eval(f"{conn.text}")
+    #print(a)
+    # print(type(a))
+    lat = None
+    lon = None
+    for i in range(len(a)):
+        if a[i]["country"] == "RU":
+            lat = a[i]["lat"]
+            lon = a[i]["lon"]
+    conn = requests.get(f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={API_KEY}")
+    # print(conn.text)
+    weather = eval(f"{conn.text}")
+    #print(weather)
+    return int(weather["main"]["temp"]-273)
+
+translator = Translator(from_lang="ru",to_lang="en")
+result = translator.translate("Москва")
+print(weather_req(result))
