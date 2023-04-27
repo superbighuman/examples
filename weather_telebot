@@ -1,0 +1,72 @@
+import telebot
+from telebot import types
+from translate import Translator
+from weather import weather_req
+import psycopg2
+import datetime
+import time
+
+
+class Sql_Req():
+    def __init__(self):
+        self.conn = psycopg2.connect(user="dmitrijkostukov", password="", dbname="postgres", host="127.0.0.1",
+                                     port="5432")
+
+    def insert_user(self, msg):
+        cur = self.conn.cursor()
+        username = msg.chat.username
+        log_time = time.time()
+        log_time = datetime.datetime.now()
+        cur.execute(f"INSERT INTO tg_bot values ('{username}', '{msg.text}', '{log_time}' )")
+        self.conn.commit()
+        cur.close()
+
+
+class Bot:
+    # token = "6144741109:AAGLZk6HwhUcThqrF3a-EEmzEPWtrThUXFw"
+    # bot = telebot.TeleBot(token)
+    # flag = False
+    def __init__(self):
+        self.token = "6144741109:AAGLZk6HwhUcThqrF3a-EEmzEPWtrThUXFw"
+        self.bot = telebot.TeleBot(self.token)
+
+        @self.bot.message_handler(commands=["start"])
+        def start(msg):
+            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            btn_weather = types.KeyboardButton("Хочу узнать погоду")
+            markup.add(btn_weather)
+            self.bot.send_message(msg.chat.id, text="Привет, {0.first_name}! Хочешь узнать погоду?".format(msg.from_user),
+                                  reply_markup=markup)
+            Sql_Req().insert_user(msg)
+
+        @self.bot.message_handler(content_types=["text"])
+        def collecting_info(msg):
+
+            def agree(msg):
+                self.bot.send_message(msg.chat.id, text="Принято")
+
+            def weather_ask(msg):
+                try:
+                    req = msg.text
+                    if req != "Хочу узнать погоду":
+                        Sql_Req().insert_user(msg)
+                        self.bot.send_message(msg.chat.id, text=f"Вы проживаете в городе {req}")
+                        self.bot.send_message(msg.chat.id, text=f"Погода в {req}")
+                        translator = Translator(to_lang="en", from_lang="ru")
+                        city_en = translator.translate(req)
+                        self.bot.send_message(msg.chat.id,
+                                              text=f"Температура в {req}: {weather_req(city_en)} градусов цельсия")
+                except:
+                    self.bot.send_message(msg.chat.id, "Что-то пошло не так")
+
+            if msg.text == "Хочу узнать погоду":
+                Sql_Req().insert_user(msg)
+                self.bot.send_message(msg.chat.id, text="В каком городе вы живете?")
+                self.bot.register_next_step_handler(msg, weather_ask)
+
+    def run(self):
+        self.bot.polling(none_stop=True)
+
+
+if __name__ == "__main__":
+    Bot().run()
